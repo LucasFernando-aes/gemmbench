@@ -68,13 +68,13 @@ This script extensively evaluates the actual kernel implementations based on a l
 
 ### Disclaimer
 
-> [IMPORTANT]
+> [!IMPORTANT]
 > Source code from [level3.c](driver/level3.c), and [kernel/riscv64](kernel/riscv64) directory are borrowed from [OpenBLAS repository](https://github.com/OpenMathLib/OpenBLAS) with boilerplate code removed for clarity.
 
-> [NOTE]
+> [!NOTE]
 > This version comes with the OpenBLAS RVV ZVL256B implementation from OpenBLAS as example. The user should add their own kernel implementation for experimentation.
 
-> [NOTE]
+> [!NOTE]
 > Execution profiling such as trace extraction, instruction countings and memory-related metrics are done through simulator options and plugins.
 
 > [!WARNING]
