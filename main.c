@@ -50,15 +50,19 @@ int main(int argc, char* argv[]){
     float* C_native = (float *) malloc(M*N*sizeof(float));
     float* C_naive = (float *) malloc(M*N*sizeof(float));
 
-    //native implementation (teiu)
+    // **** Native implementation **** //
+    // native_start();
     gemm(M, N, K,
          alpha,
          A, /*lda*/ K,
          B, /*ldb*/ N,
          beta,
          C_native, /*ldc*/ N);
+    // native_stop();
+    // **** Native implementation **** //
 
-    //naive implementation
+    // **** Naive implementation **** //
+    // naive_start();
     for (int i = 0; i < M; i++) {
       for (int j = 0; j < N; j++)
           C_naive[i*N+j] *= beta;
@@ -67,7 +71,8 @@ int main(int argc, char* argv[]){
             C_naive[i*N+j] += alpha * A[i*K+k] * B[k*N+j];
       }
     }
-
+    // naive_stop();
+    // **** Naive implementation **** //
 
      float rel_diff;
      for(int i=0; i<M; i++){

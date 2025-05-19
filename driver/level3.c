@@ -5,8 +5,8 @@
 
 #define BETA_OPERATION(M_FROM, M_TO, N_FROM, N_TO, BETA, C, LDC) \
 	GEMM_BETA((M_TO) - (M_FROM), (N_TO - N_FROM), 0, \
-		  BETA, NULL, 0, NULL, 0, \
-		  (float *)(C) + ((N_FROM) + (M_FROM) * (LDC)), LDC)
+    BETA, NULL, 0, NULL, 0, \
+    (float *)(C) + ((N_FROM) + (M_FROM) * (LDC)), LDC)
 
 #define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) GEMM_ITCOPY(M, N, (float *)(A) + ((Y) + (X) * (LDA)), LDA, BUFFER);
 
@@ -113,7 +113,11 @@ int gemm_tiling(arg_t *args, long *range_m, long *range_n,
 	}
       }
 
+      // **** Native implementation **** //
+      // icopy_start();
       ICOPY_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
+      // icopy_stop();
+      // **** Native implementation **** //
 
       for(jjs = js; jjs < js + min_j; jjs += min_jj){
 	min_jj = min_j + js - jjs;
@@ -126,14 +130,20 @@ int gemm_tiling(arg_t *args, long *range_m, long *range_n,
           		if (min_jj > GEMM_UNROLL_N) min_jj = GEMM_UNROLL_N;
 
 
-
+    // **** Native implementation **** //
+    // ocopy_start();
 	OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs,
 			sb + pad_min_l * (jjs - js) * COMPSIZE * l1stride);
+    // ocopy_stop();
+    // **** Native implementation **** //
 
-
+    // **** Native implementation **** //
+    // kernel_start();
 	KERNEL_OPERATION(min_i, min_jj, min_l, alpha,
 			 sa, sb + pad_min_l * (jjs - js)  * COMPSIZE * l1stride, c, ldc, m_from, jjs);
-
+    // kernel_stop();
+    // **** Native implementation **** //
+    
       }
 
       for(is = m_from + min_i; is < m_to; is += min_i){
@@ -146,9 +156,17 @@ int gemm_tiling(arg_t *args, long *range_m, long *range_n,
 	    min_i = ((min_i / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
 	  }
 
+    // **** Native implementation **** //
+    // icopy_start();
 	ICOPY_OPERATION(min_l, min_i, a, lda, ls, is, sa);
+    // icopy_stop();
+    // **** Native implementation **** //
 
+    // **** Native implementation **** //
+    // kernel_start();
 	KERNEL_OPERATION(min_i, min_j, min_l, alpha, sa, sb, c, ldc, is, js);
+    // kernel_stop();
+    // **** Native implementation **** //
 
       } /* end of is */
     } /* end of js */
