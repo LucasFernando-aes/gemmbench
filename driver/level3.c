@@ -25,152 +25,148 @@
 #define N	args -> n
 #define K	args -> k
 
-int gemm_tiling(arg_t *args, long *range_m, long *range_n,
-		  float *sa, float *sb){
-  long k, lda, ldb, ldc;
-  float alpha, beta;
-  float *a, *b;
-  float *c;
-  long m_from, m_to, n_from, n_to;
+int gemm_tiling(arg_t *args, long *range_m, long *range_n, float *sa, float *sb){
+    long k, lda, ldb, ldc;
+    float alpha, beta;
+    float *a, *b;
+    float *c;
+    long m_from, m_to, n_from, n_to;
 
-  long ls, is, js;
-  long min_l, min_i, min_j;
-  long jjs, min_jj;
+    long ls, is, js;
+    long min_l, min_i, min_j;
+    long jjs, min_jj;
 
-  long l1stride, gemm_p, l2size;
+    long l1stride, gemm_p, l2size;
 
-  k = K;
+    k = K;
 
-  a = (float *)A;
-  b = (float *)B;
-  c = (float *)C;
+    a = (float *)A;
+    b = (float *)B;
+    c = (float *)C;
 
-  lda = LDA;
-  ldb = LDB;
-  ldc = LDC;
+    lda = LDA;
+    ldb = LDB;
+    ldc = LDC;
 
-  alpha = args -> alpha;
-  beta  = args -> beta;
+    alpha = args -> alpha;
+    beta  = args -> beta;
 
-  m_from = 0;
-  m_to   = M;
+    m_from = 0;
+    m_to   = M;
 
-  if (range_m) {
-    m_from = *(((long *)range_m) + 0);
-    m_to   = *(((long *)range_m) + 1);
-  }
+    if (range_m) {
+        m_from = *(((long *)range_m) + 0);
+        m_to   = *(((long *)range_m) + 1);
+    }
 
-  n_from = 0;
-  n_to   = N;
+    n_from = 0;
+    n_to   = N;
 
-  if (range_n) {
-    n_from = *(((long *)range_n) + 0);
-    n_to   = *(((long *)range_n) + 1);
-  }
+    if (range_n) {
+        n_from = *(((long *)range_n) + 0);
+        n_to   = *(((long *)range_n) + 1);
+    }
 
-  if (beta) {
-    if (beta != 1) {
-	  BETA_OPERATION(m_from, m_to, n_from, n_to, beta, c, ldc);
-	}
-  }
+    if (beta) {
+        if (beta != 1) {
+            BETA_OPERATION(m_from, m_to, n_from, n_to, beta, c, ldc);
+        }
+    }
 
-  if ((k == 0) || (alpha == 0)) return 0;
+    if ((k == 0) || (alpha == 0)) return 0;
 
-  l2size = GEMM_P * GEMM_Q;
+    l2size = GEMM_P * GEMM_Q;
 
-  for(js = n_from; js < n_to; js += GEMM_R){
-    min_j = n_to - js;
-    if (min_j > GEMM_R) min_j = GEMM_R;
+    for(js = n_from; js < n_to; js += GEMM_R){
+        min_j = n_to - js;
+        if (min_j > GEMM_R) min_j = GEMM_R;
 
-    for(ls = 0; ls < k; ls += min_l){
+        for(ls = 0; ls < k; ls += min_l){
 
-      min_l = k - ls;
+            min_l = k - ls;
 
-      if (min_l >= GEMM_Q * 2) {
-	// gemm_p = GEMM_P;
-	min_l  = GEMM_Q;
-      } else {
-	if (min_l > GEMM_Q) {
-	  min_l = ((min_l / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
-	}
-	gemm_p = ((l2size / min_l + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
-	while (gemm_p * min_l > l2size) gemm_p -= GEMM_UNROLL_M;
-      }
+            if (min_l >= GEMM_Q * 2) {
+                // gemm_p = GEMM_P;
+                min_l  = GEMM_Q;
+            } else {
+                if (min_l > GEMM_Q) {
+                    min_l = ((min_l / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
+                }
+                gemm_p = ((l2size / min_l + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
+                while (gemm_p * min_l > l2size) gemm_p -= GEMM_UNROLL_M;
+            }
 
-      long pad_min_l = min_l;
+            long pad_min_l = min_l;
 
-      /* First, we have to move data A to L2 cache */
-      min_i = m_to - m_from;
-      l1stride = 1;
+            /* First, we have to move data A to L2 cache */
+            min_i = m_to - m_from;
+            l1stride = 1;
 
-      if (min_i >= GEMM_P * 2) {
-	min_i = GEMM_P;
-      } else {
-	if (min_i > GEMM_P) {
-	  min_i = ((min_i / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
-	} else {
-	  l1stride = 0;
-	}
-      }
+            if (min_i >= GEMM_P * 2) {
+                min_i = GEMM_P;
+            } else {
+                if (min_i > GEMM_P) {
+                    min_i = ((min_i / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
+                } else {
+                    l1stride = 0;
+                }
+            }
 
-      // **** Native implementation **** //
-      // icopy_start();
-      ICOPY_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
-      // icopy_stop();
-      // **** Native implementation **** //
+            // **** Native implementation **** //
+            // icopy_start();
+            ICOPY_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
+            // icopy_stop();
+            // **** Native implementation **** //
 
-      for(jjs = js; jjs < js + min_j; jjs += min_jj){
-	min_jj = min_j + js - jjs;
-        if (min_jj >= 3*GEMM_UNROLL_N) min_jj = 3*GEMM_UNROLL_N;
-        else
-/*
-		if (min_jj >= 2*GEMM_UNROLL_N) min_jj = 2*GEMM_UNROLL_N;
-        	else
-*/
-          		if (min_jj > GEMM_UNROLL_N) min_jj = GEMM_UNROLL_N;
+            for(jjs = js; jjs < js + min_j; jjs += min_jj){
+                min_jj = min_j + js - jjs;
+                if (min_jj >= 3*GEMM_UNROLL_N) min_jj = 3*GEMM_UNROLL_N;
+                else
+                /*
+                    if (min_jj >= 2*GEMM_UNROLL_N) min_jj = 2*GEMM_UNROLL_N;
+                        else
+                */
+                        if (min_jj > GEMM_UNROLL_N) min_jj = GEMM_UNROLL_N;
 
 
-    // **** Native implementation **** //
-    // ocopy_start();
-	OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs,
-			sb + pad_min_l * (jjs - js) * COMPSIZE * l1stride);
-    // ocopy_stop();
-    // **** Native implementation **** //
+                // **** Native implementation **** //
+                // ocopy_start();
+                OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs, sb + pad_min_l * (jjs - js) * COMPSIZE * l1stride);
+                // ocopy_stop();
+                // **** Native implementation **** //
 
-    // **** Native implementation **** //
-    // kernel_start();
-	KERNEL_OPERATION(min_i, min_jj, min_l, alpha,
-			 sa, sb + pad_min_l * (jjs - js)  * COMPSIZE * l1stride, c, ldc, m_from, jjs);
-    // kernel_stop();
-    // **** Native implementation **** //
-    
-      }
+                // **** Native implementation **** //
+                // kernel_start();
+                KERNEL_OPERATION(min_i, min_jj, min_l, alpha, sa, sb + pad_min_l * (jjs - js)  * COMPSIZE * l1stride, c, ldc, m_from, jjs);
+                // kernel_stop();
+                // **** Native implementation **** //
 
-      for(is = m_from + min_i; is < m_to; is += min_i){
-	min_i = m_to - is;
+            }
 
-	if (min_i >= GEMM_P * 2) {
-	  min_i = GEMM_P;
-	} else
-	  if (min_i > GEMM_P) {
-	    min_i = ((min_i / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
-	  }
+            for(is = m_from + min_i; is < m_to; is += min_i){
+                min_i = m_to - is;
 
-    // **** Native implementation **** //
-    // icopy_start();
-	ICOPY_OPERATION(min_l, min_i, a, lda, ls, is, sa);
-    // icopy_stop();
-    // **** Native implementation **** //
+                if (min_i >= GEMM_P * 2) {
+                    min_i = GEMM_P;
+                } else
+                    if (min_i > GEMM_P) {
+                        min_i = ((min_i / 2 + GEMM_UNROLL_M - 1)/GEMM_UNROLL_M) * GEMM_UNROLL_M;
+                }
 
-    // **** Native implementation **** //
-    // kernel_start();
-	KERNEL_OPERATION(min_i, min_j, min_l, alpha, sa, sb, c, ldc, is, js);
-    // kernel_stop();
-    // **** Native implementation **** //
+                // **** Native implementation **** //
+                // icopy_start();
+                ICOPY_OPERATION(min_l, min_i, a, lda, ls, is, sa);
+                // icopy_stop();
+                // **** Native implementation **** //
 
-      } /* end of is */
-    } /* end of js */
-  } /* end of ls */
+                // **** Native implementation **** //
+                // kernel_start();
+                KERNEL_OPERATION(min_i, min_j, min_l, alpha, sa, sb, c, ldc, is, js);
+                // kernel_stop();
+                // **** Native implementation **** //
 
-  return 0;
+            } /* end of is */
+        } /* end of js */
+    } /* end of ls */
+    return 0;
 }

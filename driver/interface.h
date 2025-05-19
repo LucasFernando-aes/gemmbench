@@ -47,9 +47,9 @@
 
 
 typedef struct {
-  void *a, *b, *c, *d;
-  int m, n, k, lda, ldb, ldc, ldd;
-  float alpha, beta;
+    void *a, *b, *c, *d;
+    int m, n, k, lda, ldb, ldc, ldd;
+    float alpha, beta;
 } arg_t;
 
 void gemm(int M, int N, int K,
