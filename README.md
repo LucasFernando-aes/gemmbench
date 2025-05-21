@@ -42,7 +42,13 @@ GEMMVBench
 
 The `main.c` file contains the main program, responsible for instantiating and populating the matrices, calling the matrix multiplication primitives, and comparing the results between the version using the `Native` SIMD and a naive implementation.
 
-The `dataset` directory contains files in CSV (comma-separated values) format, listing the matrix sizes (M, N, K) and the parameters α and β used to evaluate the implementation. GEMM operations are categorized into small, medium and large datasets. `small_gemm.csv` contains toy examples with common input sizes; `medium_gemm.csv` (<4MB) and `large_gemm.csv` (>4MB) contain operations derived from convolution operations from real-world CNN models.
+The `dataset` directory contains files in CSV (Comma-Separated Values) format, listing the GEMM problem sizes to be evaluated. Each line must specify the matrix sizes (M, N, K) and the parameters α and β.
+
+Three different GEMM contexts are planned to be evaluated by GEMMBench, *i.e.*, matrix multiplication operations derived from Convolutions, NLP Transformers, and HPC workloads:
+
+- **Convolution:** Convolution operations from real-world Convolutional Neural Networks were transformed into GEMM operations using the IM2COL routine and then categorized into medium (<4 MB) and large (>4 MB) datasets.
+- **NLP Transformers:** TO BE DONE.
+- **HPC:** TO BE DONE.
 
 The `driver` directory includes a simplified version of OpenBLAS, containing the files `interface.c` and `level3.c`. The `interface.c` file implements the standard GEMM API, initializing auxiliary structures, creating intermediate buffers, and calling the tiling routine in `level3.c`. The `level3.c` file essentially retains the same code as adopted by OpenBLAS.
 
@@ -62,7 +68,7 @@ To verify if the compilation was successful, run:
 
 After that, select a set of GEMM operations from the dataset folder and execute them with the following command:
 
-`./scripts/run_file.sh <gemmbench binary> <dataset/operation_set.csv>`
+`./scripts/run_file.sh <gemmbench binary> <dataset/context/operation_set.csv>`
 
 This script extensively evaluates the actual kernel implementations based on a list of operations described in a CSV file, returning the number of successful and failed cases at the end.
 
@@ -138,8 +144,8 @@ for (int i = 0; i < M; i++) {
     // **** Native implementation **** //
     ``` 
 
-    > [!NOTE]
-    > Given the tiling strategy used by OpenBLAS, the `COPY` and `KERNEL` routines are called many times. So the profiling methods should not overwrite previous measurements but accumulate them.
+> [!NOTE]
+> Given the tiling strategy used by OpenBLAS, the `COPY` and `KERNEL` routines are called many times. So the profiling methods should not overwrite previous measurements but accumulate them.
 
 ### GEM5 profiling example
 
